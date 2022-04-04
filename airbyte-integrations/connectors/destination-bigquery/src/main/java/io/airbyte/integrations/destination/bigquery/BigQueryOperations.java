@@ -1,0 +1,38 @@
+package io.airbyte.integrations.destination.bigquery;
+
+import com.google.cloud.bigquery.BigQuery;
+import io.airbyte.integrations.destination.record_buffer.SerializableBuffer;
+import java.util.List;
+import java.util.UUID;
+import org.joda.time.DateTime;
+
+public interface BigQueryOperations {
+
+  String getStageName(String namespace, String streamName);
+
+  String getStagingPath(UUID connectionId, String namespace, String streamName, DateTime writeDatetime);
+
+  /**
+   * Create a staging folder where to upload temporary files before loading into the final destination
+   */
+  void createStageIfNotExists(BigQuery bigQuery, String stageName) throws Exception;
+
+  /**
+   * Upload the data file into the stage area.
+   *
+   * @return the name of the file that was uploaded.
+   */
+  String uploadRecordsToStage(BigQuery bigQuery, SerializableBuffer recordsData, String schemaName, String stageName, String stagingPath)
+      throws Exception;
+
+  /**
+   * Load the data stored in the stage area into a temporary table in the destination
+   */
+  void copyIntoTmpTableFromStage(BigQuery bigQuery,
+                                 String stageName,
+                                 String stagingPath,
+                                 List<String> stagedFiles,
+                                 String srcTableName,
+                                 String schemaName) throws Exception;
+
+}

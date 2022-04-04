@@ -9,6 +9,9 @@ import com.google.cloud.bigquery.BigQuery;
 import io.airbyte.integrations.destination.bigquery.formatter.BigQueryRecordFormatter;
 import io.airbyte.integrations.destination.bigquery.uploader.UploaderType;
 import io.airbyte.protocol.models.ConfiguredAirbyteStream;
+import io.airbyte.protocol.models.DestinationSyncMode;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import lombok.Builder;
 import lombok.Getter;
@@ -24,5 +27,17 @@ public class UploaderConfig {
   private BigQuery bigQuery;
   private Map<UploaderType, BigQueryRecordFormatter> formatterMap;
   private boolean isDefaultAirbyteTmpSchema;
+
+  private final String namespace;
+  private final String streamName;
+  private final String outputDatasetLocation;
+  private final String outputSchema;
+  private final String outputBucketPath;
+  private final DestinationSyncMode syncMode;
+  private final List<String> storedFiles = new ArrayList<>();
+
+  public void addStoredFile(final String file) {
+    storedFiles.add(file);
+  }
 
 }

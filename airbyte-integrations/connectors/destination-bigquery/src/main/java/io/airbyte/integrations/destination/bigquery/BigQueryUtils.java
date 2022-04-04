@@ -31,10 +31,17 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import io.airbyte.commons.json.Jsons;
 import io.airbyte.integrations.base.JavaBaseConstants;
+import io.airbyte.integrations.destination.StandardNameTransformer;
+import io.airbyte.integrations.destination.bigquery.formatter.BigQueryRecordFormatter;
+import io.airbyte.integrations.destination.bigquery.formatter.DefaultBigQueryRecordFormatter;
+import io.airbyte.integrations.destination.bigquery.formatter.GcsAvroBigQueryRecordFormatter;
+import io.airbyte.integrations.destination.bigquery.formatter.GcsCsvBigQueryRecordFormatter;
+import io.airbyte.integrations.destination.bigquery.uploader.UploaderType;
 import io.airbyte.protocol.models.ConfiguredAirbyteStream;
 import io.airbyte.protocol.models.DestinationSyncMode;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -94,6 +101,7 @@ public class BigQueryUtils {
     final Dataset dataset = bigquery.getDataset(datasetId);
     if (dataset == null || !dataset.exists()) {
       final DatasetInfo datasetInfo = DatasetInfo.newBuilder(datasetId).setLocation(datasetLocation).build();
+      LOGGER.info("Creating dataset (schema): {}", datasetId);
       bigquery.create(datasetInfo);
     }
   }
@@ -121,9 +129,9 @@ public class BigQueryUtils {
       final TableInfo tableInfo = TableInfo.newBuilder(tableId, tableDefinition).build();
 
       bigquery.create(tableInfo);
-      LOGGER.info("Partitioned Table: {} created successfully", tableId);
-    } catch (BigQueryException e) {
-      LOGGER.info("Partitioned table was not created. \n" + e);
+      LOGGER.info("Created partitioned table: {}", tableId);
+    } catch (final BigQueryException e) {
+      LOGGER.error("Partitioned table was not created", e);
     }
   }
 
@@ -159,7 +167,7 @@ public class BigQueryUtils {
             + "}"))
         .build());
 
-    LOGGER.debug("Composed GCS config is: \n" + gcsJsonNode.toPrettyString());
+    LOGGER.info("Composed GCS config is: {}" + gcsJsonNode.toString());
     return gcsJsonNode;
   }
 
@@ -167,12 +175,12 @@ public class BigQueryUtils {
    * @return a default schema name based on the config.
    */
   public static String getDatasetId(final JsonNode config) {
-    String datasetId = config.get(BigQueryConsts.CONFIG_DATASET_ID).asText();
+    final String datasetId = config.get(BigQueryConsts.CONFIG_DATASET_ID).asText();
 
-    int colonIndex = datasetId.indexOf(":");
+    final int colonIndex = datasetId.indexOf(":");
     if (colonIndex != -1) {
-      String projectIdPart = datasetId.substring(0, colonIndex);
-      String projectId = config.get(BigQueryConsts.CONFIG_PROJECT_ID).asText();
+      final String projectIdPart = datasetId.substring(0, colonIndex);
+      final String projectId = config.get(BigQueryConsts.CONFIG_PROJECT_ID).asText();
       if (!(projectId.equals(projectIdPart))) {
         throw new IllegalArgumentException(String.format(
             "Project ID included in Dataset ID must match Project ID field's value: Project ID is `%s`, but you specified `%s` in Dataset ID",
@@ -203,9 +211,9 @@ public class BigQueryUtils {
    * @return The list of fields with datetime format.
    *
    */
-  public static List<String> getDateTimeFieldsFromSchema(FieldList fieldList) {
-    List<String> dateTimeFields = new ArrayList<>();
-    for (Field field : fieldList) {
+  public static List<String> getDateTimeFieldsFromSchema(final FieldList fieldList) {
+    final List<String> dateTimeFields = new ArrayList<>();
+    for (final Field field : fieldList) {
       if (field.getType().getStandardType().equals(StandardSQLTypeName.DATETIME)) {
         dateTimeFields.add(field.getName());
       }
@@ -222,10 +230,10 @@ public class BigQueryUtils {
    *      "https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-json#details_of_loading_json_data">Supported
    *      Google bigquery datatype</a> This method is responsible to adapt JSON DATETIME to Bigquery
    */
-  public static void transformJsonDateTimeToBigDataFormat(List<String> dateTimeFields, ObjectNode data) {
+  public static void transformJsonDateTimeToBigDataFormat(final List<String> dateTimeFields, final ObjectNode data) {
     dateTimeFields.forEach(e -> {
       if (data.findValue(e) != null && !data.get(e).isNull()) {
-        String googleBigQueryDateFormat = QueryParameterValue
+        final String googleBigQueryDateFormat = QueryParameterValue
             .dateTime(new DateTime(data
                 .findValue(e)
                 .asText())
@@ -299,14 +307,14 @@ public class BigQueryUtils {
     }
   }
 
-  public static void waitForJobFinish(Job job) throws InterruptedException {
+  public static void waitForJobFinish(final Job job) throws InterruptedException {
     if (job != null) {
       try {
         LOGGER.info("Waiting for job finish {}. Status: {}", job, job.getStatus());
         job.waitFor();
         LOGGER.info("Job finish {} with status {}", job, job.getStatus());
       } catch (final BigQueryException e) {
-        String errorMessage = getJobErrorMessage(e.getErrors(), job);
+        final String errorMessage = getJobErrorMessage(e.getErrors(), job);
         LOGGER.error(errorMessage);
         throw new BigQueryException(e.getCode(), errorMessage, e);
       }

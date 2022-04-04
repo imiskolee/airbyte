@@ -32,6 +32,9 @@ import java.util.Set;
 
 public class BigQueryUploaderFactory {
 
+  /**
+   * Create the uploader and prepare the dataset.
+   */
   public static AbstractBigQueryUploader<?> getUploader(final UploaderConfig uploaderConfig)
       throws IOException {
     final String schemaName = BigQueryUtils.getSchema(
@@ -42,10 +45,9 @@ public class BigQueryUploaderFactory {
 
     final boolean isGcsUploadingMode =
         UploadingMethod.GCS.equals(BigQueryUtils.getLoadingMethod(uploaderConfig.getConfig()));
-    final BigQueryRecordFormatter recordFormatter =
-        (isGcsUploadingMode
-            ? uploaderConfig.getFormatterMap().get(UploaderType.AVRO)
-            : uploaderConfig.getFormatterMap().get(UploaderType.STANDARD));
+    final BigQueryRecordFormatter recordFormatter = isGcsUploadingMode
+        ? uploaderConfig.getFormatterMap().get(UploaderType.AVRO)
+        : uploaderConfig.getFormatterMap().get(UploaderType.STANDARD);
     final Schema bigQuerySchema = recordFormatter.getBigQuerySchema();
 
     BigQueryUtils.createSchemaAndTableIfNeeded(
@@ -62,7 +64,7 @@ public class BigQueryUploaderFactory {
         BigQueryUtils.getWriteDisposition(
             uploaderConfig.getConfigStream().getDestinationSyncMode());
 
-    return (isGcsUploadingMode
+    return isGcsUploadingMode
         ? getGcsBigQueryUploader(
             uploaderConfig.getConfig(),
             uploaderConfig.getConfigStream(),
@@ -79,11 +81,10 @@ public class BigQueryUploaderFactory {
             uploaderConfig.getBigQuery(),
             syncMode,
             datasetLocation,
-            recordFormatter));
+            recordFormatter);
   }
 
-  private static AbstractGscBigQueryUploader<?> getGcsBigQueryUploader(
-                                                                       final JsonNode config,
+  private static AbstractGscBigQueryUploader<?> getGcsBigQueryUploader(final JsonNode config,
                                                                        final ConfiguredAirbyteStream configStream,
                                                                        final TableId targetTable,
                                                                        final TableId tmpTable,
@@ -93,13 +94,10 @@ public class BigQueryUploaderFactory {
                                                                        final boolean isDefaultAirbyteTmpSchema)
       throws IOException {
 
-    final GcsDestinationConfig gcsDestinationConfig =
-        GcsDestinationConfig.getGcsDestinationConfig(
-            BigQueryUtils.getGcsAvroJsonNodeConfig(config));
-    final JsonNode tmpTableSchema =
-        (isDefaultAirbyteTmpSchema ? null : formatter.getJsonSchema());
-    final GcsAvroWriter gcsCsvWriter =
-        initGcsWriter(gcsDestinationConfig, configStream, tmpTableSchema);
+    final GcsDestinationConfig gcsDestinationConfig = GcsDestinationConfig.getGcsDestinationConfig(
+        BigQueryUtils.getGcsAvroJsonNodeConfig(config));
+    final JsonNode tmpTableSchema = isDefaultAirbyteTmpSchema ? null : formatter.getJsonSchema();
+    final GcsAvroWriter gcsCsvWriter = initGcsWriter(gcsDestinationConfig, configStream, tmpTableSchema);
     gcsCsvWriter.initialize();
 
     return new GcsAvroBigQueryUploader(
@@ -113,8 +111,7 @@ public class BigQueryUploaderFactory {
         formatter);
   }
 
-  private static GcsAvroWriter initGcsWriter(
-                                             final GcsDestinationConfig gcsDestinationConfig,
+  private static GcsAvroWriter initGcsWriter(final GcsDestinationConfig gcsDestinationConfig,
                                              final ConfiguredAirbyteStream configuredStream,
                                              final JsonNode jsonSchema)
       throws IOException {
@@ -130,8 +127,7 @@ public class BigQueryUploaderFactory {
         jsonSchema);
   }
 
-  private static BigQueryDirectUploader getBigQueryDirectUploader(
-                                                                  final JsonNode config,
+  private static BigQueryDirectUploader getBigQueryDirectUploader(final JsonNode config,
                                                                   final TableId targetTable,
                                                                   final TableId tmpTable,
                                                                   final BigQuery bigQuery,

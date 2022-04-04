@@ -5,7 +5,7 @@ plugins {
 }
 
 application {
-    mainClass = 'io.airbyte.integrations.destination.bigquery.BigQueryDestination'
+    mainClass = 'io.airbyte.integrations.destination.bigquery.BigQueryDestinationV2'
     applicationDefaultJvmArgs = ['-XX:+ExitOnOutOfMemoryError', '-XX:MaxRAMPercentage=75.0']
 }
 

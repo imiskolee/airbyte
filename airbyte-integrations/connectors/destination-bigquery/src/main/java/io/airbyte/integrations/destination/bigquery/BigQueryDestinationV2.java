@@ -21,7 +21,9 @@ import io.airbyte.integrations.base.AirbyteMessageConsumer;
 import io.airbyte.integrations.base.Destination;
 import io.airbyte.integrations.base.IntegrationRunner;
 import io.airbyte.integrations.destination.gcs.GcsDestinationConfig;
+import io.airbyte.integrations.destination.gcs.credential.GcsCredentialConfigs;
 import io.airbyte.integrations.destination.record_buffer.FileBuffer;
+import io.airbyte.integrations.destination.s3.S3FormatConfigs;
 import io.airbyte.integrations.destination.s3.S3StorageOperations;
 import io.airbyte.integrations.destination.s3.SerializedBufferFactory;
 import io.airbyte.protocol.models.AirbyteConnectionStatus;
@@ -36,9 +38,9 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class BigQueryGcsStagingDestination extends BaseConnector implements Destination {
+public class BigQueryDestinationV2 extends BaseConnector implements Destination {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(BigQueryGcsStagingDestination.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(BigQueryDestinationV2.class);
   private static final List<String> REQUIRED_PERMISSIONS = List.of(
       "storage.multipartUploads.abort",
       "storage.multipartUploads.create",
@@ -46,14 +48,16 @@ public class BigQueryGcsStagingDestination extends BaseConnector implements Dest
       "storage.objects.delete",
       "storage.objects.get",
       "storage.objects.list");
+  private static final JsonNode FORMAT_CONFIG = Jsons.deserialize("{ \"format\": { \"format_type\": \"AVRO\" } }");
+
   private final BigQuerySQLNameTransformer namingResolver;
 
-  public BigQueryGcsStagingDestination() {
+  public BigQueryDestinationV2() {
     namingResolver = new BigQuerySQLNameTransformer();
   }
 
   public static void main(final String[] args) throws Exception {
-    final Destination destination = new BigQueryGcsStagingDestination();
+    final Destination destination = new BigQueryDestinationV2();
     new IntegrationRunner(destination).run(args);
   }
 
@@ -180,13 +184,18 @@ public class BigQueryGcsStagingDestination extends BaseConnector implements Dest
   public AirbyteMessageConsumer getConsumer(final JsonNode config,
                                             final ConfiguredAirbyteCatalog catalog,
                                             final Consumer<AirbyteMessage> outputRecordCollector) {
-    final GcsDestinationConfig gcsConfig = GcsDestinationConfig.getGcsDestinationConfig(config.get(BigQueryConsts.GCS_CONFIG));
-    return new BigQueryGcsConsumerFactory().create(
+    LOGGER.info("Config: {}", config.toString());
+    final GcsDestinationConfig gcsConfig = GcsDestinationConfig.getGcsDestinationConfig(
+        BigQueryUtils.getGcsAvroJsonNodeConfig(config));
+
+    return new BigQueryGcsStagingConsumerFactory().create(
         outputRecordCollector,
+        getBigQuery(config),
         new S3StorageOperations(namingResolver, gcsConfig.getS3Client(), gcsConfig),
         namingResolver,
-        SerializedBufferFactory.getCreateFunction(config, FileBuffer::new),
+        SerializedBufferFactory.getCreateFunction(FORMAT_CONFIG, FileBuffer::new),
         config,
+        gcsConfig,
         catalog);
   }
 

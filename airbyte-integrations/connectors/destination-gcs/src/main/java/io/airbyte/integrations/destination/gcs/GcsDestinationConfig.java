@@ -16,9 +16,12 @@ import io.airbyte.integrations.destination.gcs.credential.GcsHmacKeyCredentialCo
 import io.airbyte.integrations.destination.s3.S3DestinationConfig;
 import io.airbyte.integrations.destination.s3.S3FormatConfig;
 import io.airbyte.integrations.destination.s3.S3FormatConfigs;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class GcsDestinationConfig extends S3DestinationConfig {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(GcsDestinationConfig.class);
   private static final String GCS_ENDPOINT = "https://storage.googleapis.com";
 
   private final GcsCredentialConfig credentialConfig;
@@ -36,7 +39,7 @@ public class GcsDestinationConfig extends S3DestinationConfig {
     return new GcsDestinationConfig(
         config.get("gcs_bucket_name").asText(),
         config.get("gcs_bucket_path").asText(),
-        config.get("gcs_bucket_region").asText(),
+        config.has("gcs_bucket_region") ? config.get("gcs_bucket_region").asText() : "",
         GcsCredentialConfigs.getCredentialConfig(config),
         S3FormatConfigs.getS3FormatConfig(config));
   }
@@ -47,6 +50,8 @@ public class GcsDestinationConfig extends S3DestinationConfig {
 
   @Override
   protected AmazonS3 createS3Client() {
+    LOGGER.info("Creating S3 client for GCS...");
+
     final GcsHmacKeyCredentialConfig hmacKeyCredential = (GcsHmacKeyCredentialConfig) credentialConfig;
     final BasicAWSCredentials awsCreds = new BasicAWSCredentials(hmacKeyCredential.getHmacKeyAccessId(), hmacKeyCredential.getHmacKeySecret());
 

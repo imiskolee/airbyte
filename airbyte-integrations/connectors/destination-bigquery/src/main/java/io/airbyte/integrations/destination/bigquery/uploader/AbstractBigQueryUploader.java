@@ -53,11 +53,11 @@ public abstract class AbstractBigQueryUploader<T extends DestinationWriter> {
     this.recordFormatter = recordFormatter;
   }
 
-  protected void postProcessAction(boolean hasFailed) throws Exception {
+  protected void postProcessAction(final boolean hasFailed) throws Exception {
     // Do nothing by default
   }
 
-  public void upload(AirbyteMessage airbyteMessage) {
+  public void upload(final AirbyteMessage airbyteMessage) {
     try {
       writer.write((recordFormatter.formatRecord(airbyteMessage.getRecord())));
     } catch (final IOException | RuntimeException e) {
@@ -66,18 +66,19 @@ public abstract class AbstractBigQueryUploader<T extends DestinationWriter> {
           "Failed to process a message for job: \n%s, \nAirbyteMessage: %s",
           writer.toString(),
           airbyteMessage.getRecord()));
-      printHeapMemoryConsumption();
       throw new RuntimeException(e);
     }
   }
 
-  public void close(boolean hasFailed, Consumer<AirbyteMessage> outputRecordCollector, AirbyteMessage lastStateMessage) {
+  public void close(final boolean hasFailed, final Consumer<AirbyteMessage> outputRecordCollector, final AirbyteMessage lastStateMessage) {
     try {
-      LOGGER.info("Field fails during format : ");
       recordFormatter.printAndCleanFieldFails();
 
-      LOGGER.info("Closing connector:" + this);
-      this.writer.close(hasFailed);
+      LOGGER.info("Closing uploader: {}", this);
+      // TODO: remove this writer
+      if (this.writer != null) {
+        this.writer.close(hasFailed);
+      }
 
       if (!hasFailed) {
         uploadData(outputRecordCollector, lastStateMessage);
@@ -86,19 +87,21 @@ public abstract class AbstractBigQueryUploader<T extends DestinationWriter> {
       LOGGER.info("Closed connector:" + this);
     } catch (final Exception e) {
       LOGGER.error(String.format("Failed to close %s writer, \n details: %s", this, e.getMessage()));
-      printHeapMemoryConsumption();
       throw new RuntimeException(e);
     }
   }
 
-  protected void uploadData(Consumer<AirbyteMessage> outputRecordCollector, AirbyteMessage lastStateMessage) throws Exception {
+  protected void uploadData(final Consumer<AirbyteMessage> outputRecordCollector, final AirbyteMessage lastStateMessage) throws Exception {
     try {
       LOGGER.info("Uploading data from the tmp table {} to the source table {}.", tmpTable.getTable(), table.getTable());
       uploadDataToTableFromTmpTable();
       LOGGER.info("Data is successfully loaded to the source table {}!", table.getTable());
-      outputRecordCollector.accept(lastStateMessage);
+      // TODO: remove this collector
+      if (outputRecordCollector != null) {
+        outputRecordCollector.accept(lastStateMessage);
+      }
       LOGGER.info("Final state message is accepted.");
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.error("Upload data is failed!");
       throw e;
     } finally {
@@ -112,7 +115,7 @@ public abstract class AbstractBigQueryUploader<T extends DestinationWriter> {
       LOGGER.info("Removing tmp tables...");
       bigQuery.delete(tmpTable);
       LOGGER.info("Finishing destination process...completed");
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.error("Fail to tmp table drop table: " + e.getMessage());
     }
   }
@@ -210,7 +213,7 @@ public abstract class AbstractBigQueryUploader<T extends DestinationWriter> {
         "table=" + table.getTable() +
         ", tmpTable=" + tmpTable.getTable() +
         ", syncMode=" + syncMode +
-        ", writer=" + writer.getClass() +
+        ", writer=" + (writer != null ? writer.getClass() : "null") +
         ", recordFormatter=" + recordFormatter.getClass() +
         '}';
   }

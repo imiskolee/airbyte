@@ -4,22 +4,26 @@
 
 package io.airbyte.integrations.destination.bigquery.uploader;
 
-import com.google.cloud.bigquery.*;
+import com.google.cloud.bigquery.BigQuery;
+import com.google.cloud.bigquery.FormatOptions;
+import com.google.cloud.bigquery.JobInfo;
 import com.google.cloud.bigquery.JobInfo.WriteDisposition;
+import com.google.cloud.bigquery.LoadJobConfiguration;
+import com.google.cloud.bigquery.TableId;
 import io.airbyte.integrations.destination.bigquery.formatter.BigQueryRecordFormatter;
 import io.airbyte.integrations.destination.gcs.GcsDestinationConfig;
 import io.airbyte.integrations.destination.gcs.avro.GcsAvroWriter;
 
 public class GcsAvroBigQueryUploader extends AbstractGscBigQueryUploader<GcsAvroWriter> {
 
-  public GcsAvroBigQueryUploader(TableId table,
-                                 TableId tmpTable,
-                                 GcsAvroWriter writer,
-                                 JobInfo.WriteDisposition syncMode,
-                                 GcsDestinationConfig gcsDestinationConfig,
-                                 BigQuery bigQuery,
-                                 boolean isKeepFilesInGcs,
-                                 BigQueryRecordFormatter recordFormatter) {
+  public GcsAvroBigQueryUploader(final TableId table,
+                                 final TableId tmpTable,
+                                 final GcsAvroWriter writer,
+                                 final JobInfo.WriteDisposition syncMode,
+                                 final GcsDestinationConfig gcsDestinationConfig,
+                                 final BigQuery bigQuery,
+                                 final boolean isKeepFilesInGcs,
+                                 final BigQueryRecordFormatter recordFormatter) {
     super(table, tmpTable, writer, syncMode, gcsDestinationConfig, bigQuery, isKeepFilesInGcs, recordFormatter);
   }
 
