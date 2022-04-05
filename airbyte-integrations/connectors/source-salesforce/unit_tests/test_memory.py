@@ -29,5 +29,4 @@ def test_memory_download_data(stream_config, stream_api):
         first_size, first_peak = tracemalloc.get_traced_memory()
         first_size_in_megabytes = first_size / 1024**2
         first_peak_in_megabytes = first_peak / 1024**2
-        print(first_size_in_megabytes)
-        print(first_peak_in_megabytes)
+        print(f"first_size = {first_size_in_megabytes} Mb, first_peak = {first_peak_in_megabytes} Mb")
